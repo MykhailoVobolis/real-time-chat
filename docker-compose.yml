@@ -2,24 +2,27 @@ services:
   db:
     image: postgres:15
     restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+    env_file:
+      - ./server/.env.docker
     ports:
       - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $POSTGRES_USER -d $POSTGRES_DB -h localhost']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   server:
     build: ./server
     restart: always
     env_file:
-      - ./server/.env
+      - ./server/.env.docker
     depends_on:
-      - db
-    environment:
-      DATABASE_URL: ${POSTGRES_URL}
+      db:
+        condition: service_healthy
     ports:
       - '3000:3000'
 
@@ -27,7 +30,7 @@ services:
     build: ./client
     restart: always
     ports:
-      - '5173:5173'
+      - '5173:80'
 
 volumes:
   pgdata:
